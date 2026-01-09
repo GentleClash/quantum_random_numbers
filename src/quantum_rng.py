@@ -27,10 +27,11 @@ class QuantumRNG:
             print(f"Number of qubits being used = {self.num_qubits}. This may take a moment to generate.")
         self.qr = QuantumRegister(self.num_qubits, 'q')
         self.cr = ClassicalRegister(self.num_qubits, 'c')
-        self.circuit = QuantumCircuit(self.qr, self.cr)
         self.simulator = AerSimulator()
 
     def _generate_random_bits(self) -> str:
+
+        self.circuit = QuantumCircuit(self.qr, self.cr) # New circuit for each generation, resuing same circuit again and again is conceptually wrong
 
         # Create superposition
         self.circuit.h(self.qr)
@@ -61,8 +62,11 @@ class QuantumRNG:
 
         if self.range is not None:
             min_val, max_val = self.range
-            range_size = max_val - min_val + 1
-            random_int = min_val + (random_int % range_size)
+            if min_val > max_val:
+                raise ValueError("Invalid range: min should be less than or equal to max.")
+            while not (min_val <= random_int <= max_val):
+                random_bits = self._generate_random_bits()
+                random_int = min_val + int(random_bits, 2) # Using modulo created bias.
 
         return random_int
     
@@ -79,7 +83,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Quantum Random Number Generator")
-    parser.add_argument("--num_qubits", type=int, help="Number of qubits to use for generating random bits.")
+    parser.add_argument("--qubits", type=int, help="Number of qubits to use for generating random bits.")
     parser.add_argument("--min", type=int, help="Minimum value of the random number range.")
     parser.add_argument("--max", type=int, help="Maximum value of the random number range.")
     parser.add_argument("--size", type=int, help="Total size of random numbers to generate.")
@@ -87,8 +91,8 @@ if __name__ == "__main__":
 
     if args.min is not None and args.max is not None:
         qrng = QuantumRNG(range=(args.min, args.max))
-    elif args.num_qubits is not None:
-        qrng = QuantumRNG(num_qubits=args.num_qubits)
+    elif args.qubits is not None:
+        qrng = QuantumRNG(num_qubits=args.qubits)
     else:
         raise ValueError("Either num_qubits or both min and max must be provided.")
     
